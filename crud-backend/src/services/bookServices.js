@@ -6,22 +6,22 @@ export const getEntries = async () => {
 };
 
 export const createEntry = async (entryData) => {
-    const { readerName, email, bookTitle, dueDate, status } = entryData;
+    const { reader, email, title, dueDate, status } = entryData;
     const { rows } = await query(
         `INSERT INTO books_tb (readername, email, booktitle, duedate, status)
          VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [readerName, email, bookTitle, dueDate, status]
+        [reader, email, title, dueDate, status]
     );
     return rows[0];
 };
 
 export const updateEntry = async (entryId, entryData) => {
-    const { readerName, email, bookTitle, dueDate, status } = entryData;
+    const { reader, email, title, dueDate, status } = entryData;
     const { rows } = await query(
         `UPDATE books_tb
          SET readername = $1, email = $2, booktitle = $3, duedate = $4, status = $5
          WHERE id = $6 RETURNING *`,
-        [readerName, email, bookTitle, dueDate, status, entryId]
+        [reader, email, title, dueDate, status, entryId]
     );
     return rows[0];
 };
