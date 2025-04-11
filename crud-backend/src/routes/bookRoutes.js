@@ -19,4 +19,3 @@ router.delete('/books/:id', bookController.deleteEntry);
 router.get('/books/search', bookController.searchEntries);
 
 export default router;
-

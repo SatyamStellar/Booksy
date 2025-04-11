@@ -1,100 +1,92 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from 'react';
 
-export default function ModalForm({ isOpen, onClose, mode, OnSubmit, clientData }) {
-    // State for Booksy
-    const [readerName, setReaderName] = useState('');
+export default function ModalForm({ isOpen, onClose, mode, onSubmit, clientData }) {
+    const [reader, setReader] = useState('');
     const [email, setEmail] = useState('');
-    const [bookTitle, setBookTitle] = useState('');
+    const [title, setTitle] = useState('');
     const [dueDate, setDueDate] = useState('');
-    const [status, setStatus] = useState('Borrowed');
+    const [status, setStatus] = useState('BORROWED');
+    const [error, setError] = useState(null);
 
-    // Handle status change
-    const handleStatusChange = (e) => {
-        setStatus(e.target.value); // Borrowed / Returned / Overdue
-    };
-
-    // Handle submit
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const entryData = {
-                readerName,
-                email,
-                bookTitle,
-                dueDate,
-                status
-            };
-            await OnSubmit(entryData);
-            onClose();
-        } catch (err) {
-            console.error("Error adding entry", err);
-        }
-    };
-
-    // Handle edit vs create mode
     useEffect(() => {
         if (mode === 'edit' && clientData) {
-            setReaderName(clientData.readerName);
-            setEmail(clientData.email);
-            setBookTitle(clientData.bookTitle);
-            setDueDate(clientData.dueDate);
-            setStatus(clientData.status);
+            setReader(clientData.reader || '');
+            setEmail(clientData.email || '');
+            setTitle(clientData.title || '');
+            setDueDate(clientData.dueDate ? new Date(clientData.dueDate).toISOString().split('T')[0] : '');
+            setStatus(clientData.status || 'BORROWED');
         } else {
-            // Reset fields
-            setReaderName('');
+            setReader('');
             setEmail('');
-            setBookTitle('');
+            setTitle('');
             setDueDate('');
-            setStatus('Borrowed');
+            setStatus('BORROWED');
+            setError(null);
         }
     }, [mode, clientData]);
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        try {
+            const entryData = {
+                reader,
+                email,
+                title,
+                dueDate: new Date(dueDate).toISOString(),
+                status
+            };
+            await onSubmit(entryData);
+            onClose();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to submit entry');
+        }
+    };
 
     return (
-
-
-
-
         <>
             <dialog id="my_modal_3" className="modal" open={isOpen}>
                 <div className="modal-box">
-                    <h3 className="font-bold text-lg py-4">{mode === 'edit' ? 'Edit Entry' : 'Borrower Details'}</h3>
-                    <form method="dialog" onSubmit={handleSubmit}>
+                    <h3 className="font-bold text-lg py-4">
+                        {mode === 'edit' ? 'Edit Book Entry' : 'New Borrow Entry'}
+                    </h3>
 
-                        {/* Reader Name */}
+                    {error && <div className="alert alert-error mb-4">{error}</div>}
+
+                    <form onSubmit={handleSubmit}>
                         <label className="input input-bordered my-4 flex items-center gap-2">
-                            Reader Name
+                            Name
                             <input
                                 type="text"
                                 className="grow"
-                                value={readerName}
-                                onChange={(e) => setReaderName(e.target.value)}
+                                value={reader}
+                                onChange={(e) => setReader(e.target.value)}
+                                required
                             />
                         </label>
 
-                        {/* Email */}
                         <label className="input input-bordered my-4 flex items-center gap-2">
                             Email
                             <input
-                                type="text"
+                                type="email"
                                 className="grow"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                required
                             />
                         </label>
 
-                        {/* Book Title */}
                         <label className="input input-bordered my-4 flex items-center gap-2">
                             Book Title
                             <input
                                 type="text"
                                 className="grow"
-                                value={bookTitle}
-                                onChange={(e) => setBookTitle(e.target.value)}
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                required
                             />
                         </label>
 
-                        {/* Due Date + Status */}
                         <div className="flex mb-4 justify-between my-4">
                             <label className="input input-bordered mr-4 flex items-center gap-2">
                                 Due Date
@@ -103,6 +95,7 @@ export default function ModalForm({ isOpen, onClose, mode, OnSubmit, clientData 
                                     className="grow"
                                     value={dueDate}
                                     onChange={(e) => setDueDate(e.target.value)}
+                                    required
                                 />
                             </label>
 
@@ -111,13 +104,12 @@ export default function ModalForm({ isOpen, onClose, mode, OnSubmit, clientData 
                                 className="select select-bordered w-full max-w-xs"
                                 onChange={(e) => setStatus(e.target.value)}
                             >
-                                <option>Borrowed</option>
-                                <option>Returned</option>
-                                <option>Overdue</option>
+                                <option value="BORROWED">Borrowed</option>
+                                <option value="RETURNED">Returned</option>
+                                <option value="OVERDUE">Overdue</option>
                             </select>
                         </div>
 
-                        {/* Close & Submit */}
                         <button
                             type="button"
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -133,5 +125,5 @@ export default function ModalForm({ isOpen, onClose, mode, OnSubmit, clientData 
                 </div>
             </dialog>
         </>
-    )
+    );
 }

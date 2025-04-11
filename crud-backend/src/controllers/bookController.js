@@ -1,51 +1,83 @@
-import * as bookService from "../services/bookServices.js"
+import * as bookService from '../services/bookServices.js';
 
 export const getEntries = async (req, res) => {
     try {
-        const entries = await bookService.getEntries();
-        res.status(200).json(entries);
-    } catch (err) {
-        console.error('Error fetching entries:', err);
+        const entries = await bookService.getAllEntries();
+        res.json(entries);
+    } catch (error) {
+        console.error('Error fetching entries:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
 
 export const createEntry = async (req, res) => {
     try {
-        const entryData = req.body;
-        const newEntry = await bookService.createEntry(entryData);
-        res.status(200).json(newEntry);
-    } catch (err) {
-        console.error('Error adding entry:', err);
+        const { reader, email, title, dueDate, status } = req.body;
+
+        if (!reader || !email || !title || !dueDate || !status) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        if (!['BORROWED', 'RETURNED', 'OVERDUE'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        const newEntry = await bookService.createEntry({
+            reader,
+            email,
+            title,
+            dueDate: new Date(dueDate),
+            status
+        });
+        res.status(201).json(newEntry);
+    } catch (error) {
+        console.error('Error creating entry:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
 
 export const updateEntry = async (req, res) => {
     try {
-        const entryId = req.params.id;
-        const entryData = req.body;
-        const updatedEntry = await bookService.updateEntry(entryId, entryData);
+        const entryId = parseInt(req.params.id);
+        const { reader, email, title, dueDate, status } = req.body;
+
+        if (isNaN(entryId)) {
+            return res.status(400).json({ message: 'Invalid entry ID' });
+        }
+
+        const updatedEntry = await bookService.updateEntry(entryId, {
+            reader,
+            email,
+            title,
+            dueDate: dueDate ? new Date(dueDate) : undefined,
+            status
+        });
+
         if (!updatedEntry) {
             return res.status(404).json({ message: 'Entry not found' });
         }
-        res.status(200).json(updatedEntry);
-    } catch (err) {
-        console.error('Error updating entry:', err);
+        res.json(updatedEntry);
+    } catch (error) {
+        console.error('Error updating entry:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
 
 export const deleteEntry = async (req, res) => {
     try {
-        const entryId = req.params.id;
+        const entryId = parseInt(req.params.id);
+
+        if (isNaN(entryId)) {
+            return res.status(400).json({ message: 'Invalid entry ID' });
+        }
+
         const deleted = await bookService.deleteEntry(entryId);
         if (!deleted) {
             return res.status(404).json({ message: 'Entry not found' });
         }
-        res.status(200).send();
-    } catch (err) {
-        console.error('Error deleting entry:', err);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Error deleting entry:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
@@ -53,11 +85,13 @@ export const deleteEntry = async (req, res) => {
 export const searchEntries = async (req, res) => {
     try {
         const searchTerm = req.query.q;
+        if (!searchTerm) {
+            return res.status(400).json({ message: 'Search term is required' });
+        }
         const results = await bookService.searchEntries(searchTerm);
-        res.status(200).json(results);
-    } catch (err) {
-        console.error('Error searching entries:', err);
+        res.json(results);
+    } catch (error) {
+        console.error('Error searching entries:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
-

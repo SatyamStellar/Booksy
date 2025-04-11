@@ -1,81 +1,101 @@
-
-import { useState, useEffect } from 'react'
-import './App.css'
-import ModalForm from './components/ModalForm.jsx'
-import NavBar from './components/NavBar.jsx'
-import TableList from './components/TableList.jsx'
+import { useState, useEffect } from 'react';
+import './App.css';
+import ModalForm from './components/ModalForm.jsx';
+import NavBar from './components/NavBar.jsx';
+import TableList from './components/TableList.jsx';
 import axios from 'axios';
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [searchTerm, setSearchTerm] = useState('');
-  const [clientData, setClientData] = useState(null);
+  const [bookData, setBookData] = useState(null);
   const [tableData, setTableData] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-
-
-  const fetchClients = async () => {
+  const fetchBooks = async (search = '') => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get('http://localhost:3000/api/clients')
-      setTableData(response.data); // Set the fetched data
-
+      const endpoint = search
+        ? `http://localhost:3000/api/books/search?q=${encodeURIComponent(search)}`
+        : 'http://localhost:3000/api/books';
+      const response = await axios.get(endpoint);
+      setTableData(response.data);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || 'Failed to fetch books');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchClients();
+    fetchBooks();
   }, []);
 
+  useEffect(() => {
+    if (searchTerm) {
+      fetchBooks(searchTerm);
+    } else {
+      fetchBooks();
+    }
+  }, [searchTerm]);
 
-
-  const handleOpen = (mode, client) => {
-    setClientData(client);
+  const handleOpen = (mode, book = null) => {
+    setBookData(book);
     setModalMode(mode);
     setIsOpen(true);
   };
 
-  const handleSubmit = async (newClientData) => {
-    if (modalMode === 'add') {
-      try {
-        const response = await axios.post('http://localhost:3000/api/clients', newClientData); // Replace with your actual API URL
-        console.log('Client added:', response.data); // Log the response
+  const handleSubmit = async (newBookData) => {
+    setError(null);
+    try {
+      if (modalMode === 'add') {
+        const response = await axios.post('http://localhost:3000/api/books', newBookData);
         setTableData((prevData) => [...prevData, response.data]);
-        // Optionally, update your state here to reflect the newly added client
-      } catch (error) {
-        console.error('Error adding client:', error); // Log any errors
-      }
-      console.log('modal mode Add');
-
-    } else {
-      console.log('Updating client with ID:', clientData.id); // Log the ID being updated
-      try {
-        const response = await axios.put(`http://localhost:3000/api/clients/${clientData.id}`, newClientData);
-        console.log('Client updated:', response.data);
-        setTableData((prevData) =>
-          prevData.map((client) => (client.id === clientData.id ? response.data : client))
+      } else {
+        const response = await axios.put(
+          `http://localhost:3000/api/books/${bookData.id}`,
+          newBookData
         );
-      } catch (error) {
-        console.error('Error updating client:', error);
+        setTableData((prevData) =>
+          prevData.map((book) => (book.id === bookData.id ? response.data : book))
+        );
       }
-
+      setIsOpen(false);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to save book');
     }
-  }
+  };
 
   return (
-    <>
+    <div className="min-h-screen bg-base-200">
       <NavBar onOpen={() => handleOpen('add')} onSearch={setSearchTerm} />
-      <TableList setTableData={setTableData} tableData={tableData}
-        handleOpen={handleOpen} searchTerm={searchTerm} />
+      {error && (
+        <div className="alert alert-error mx-auto max-w-4xl mt-4">{error}</div>
+      )}
+      {loading ? (
+        <div className="text-center mt-10">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      ) : (
+        <TableList
+          setTableData={setTableData}
+          tableData={tableData}
+          handleOpen={handleOpen}
+          searchTerm={searchTerm}
+        />
+      )}
       <ModalForm
-        isOpen={isOpen} OnSubmit={handleSubmit}
+        isOpen={isOpen}
+        onSubmit={handleSubmit}
         onClose={() => setIsOpen(false)}
-        mode={modalMode} clientData={clientData}
+        mode={modalMode}
+        clientData={bookData}
       />
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;

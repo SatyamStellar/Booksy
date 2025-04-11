@@ -1,45 +1,78 @@
-import { query } from "../db.js";
+import { PrismaClient } from '@prisma/client';
 
-export const getEntries = async () => {
-    const { rows } = await query('SELECT * FROM books_tb');
-    return rows;
+const prisma = new PrismaClient();
+
+export const getAllEntries = async () => {
+    return await prisma.book.findMany({
+        select: {
+            id: true,
+            reader: true,
+            email: true,
+            title: true,
+            dueDate: true,
+            status: true
+        }
+    });
 };
 
-export const createEntry = async (entryData) => {
-    const { reader, email, title, dueDate, status } = entryData;
-    const { rows } = await query(
-        `INSERT INTO books_tb (readername, email, booktitle, duedate, status)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [reader, email, title, dueDate, status]
-    );
-    return rows[0];
+export const createEntry = async (data) => {
+    return await prisma.book.create({
+        data: {
+            reader: data.reader,
+            email: data.email,
+            title: data.title,
+            dueDate: data.dueDate,
+            status: data.status
+        }
+    });
 };
 
-export const updateEntry = async (entryId, entryData) => {
-    const { reader, email, title, dueDate, status } = entryData;
-    const { rows } = await query(
-        `UPDATE books_tb
-         SET readername = $1, email = $2, booktitle = $3, duedate = $4, status = $5
-         WHERE id = $6 RETURNING *`,
-        [reader, email, title, dueDate, status, entryId]
-    );
-    return rows[0];
+export const updateEntry = async (id, data) => {
+    try {
+        return await prisma.book.update({
+            where: { id },
+            data: {
+                reader: data.reader,
+                email: data.email,
+                title: data.title,
+                dueDate: data.dueDate,
+                status: data.status
+            }
+        });
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return null; // Record not found
+        }
+        throw error;
+    }
 };
 
-export const deleteEntry = async (entryId) => {
-    const { rowCount } = await query(`DELETE FROM books_tb WHERE id = $1`, [entryId]);
-    return rowCount > 0;
+export const deleteEntry = async (id) => {
+    try {
+        await prisma.book.delete({
+            where: { id }
+        });
+        return true;
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return false; // Record not found
+        }
+        throw error;
+    }
 };
 
 export const searchEntries = async (searchTerm) => {
-    const { rows } = await query(
-        `SELECT * FROM books_tb 
-         WHERE readername ILIKE $1 
-         OR email ILIKE $1 
-         OR booktitle ILIKE $1 
-         OR status ILIKE $1`,
-        [`%${searchTerm}%`]
-    );
-    return rows;
+    return await prisma.book.findMany({
+        where: {
+            OR: [
+                { reader: { contains: searchTerm, mode: 'insensitive' } },
+                { email: { contains: searchTerm, mode: 'insensitive' } },
+                { title: { contains: searchTerm, mode: 'insensitive' } }
+            ]
+        }
+    });
 };
 
+export const disconnect = async () => {
+    await prisma.$disconnect();
+};
